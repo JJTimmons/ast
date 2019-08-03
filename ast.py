@@ -13,10 +13,6 @@ INT, MUL, DIV, ADD, MIN, EOF, LP, RP = (
 )
 
 
-class AST:
-    pass
-
-
 class Token:
     def __init__(self, type: str, value: Union[str, int]):
         self.type = type
@@ -81,6 +77,32 @@ class Lexer:
         return Token(EOF, "")
 
 
+class AST:
+    pass
+
+
+class Num(AST):
+    def __init__(self, token: Token):
+        assert token
+        self.token = token
+        self.value = token.value
+
+
+class Unary(AST):  # +/-
+    def __init__(self, op: Token, right: AST):
+        assert op
+        self.op = op
+        self.right = right
+
+
+class BinOp(AST):
+    def __init__(self, left: AST, op: Token, right: AST):
+        assert left and right
+        self.left = left
+        self.op = op
+        self.right = right
+
+
 class Parser:
     """Take a lexer and build an AST."""
 
@@ -97,6 +119,15 @@ class Parser:
             node = Num(self.token)
             self.eat(INT)
             return node
+
+        if self.token.type in (ADD, MIN):
+            token = self.token
+            if self.token.type == ADD:
+                self.eat(ADD)
+            elif self.token.type == MIN:
+                self.eat(MIN)
+            return Unary(token, self.factor())
+
         if self.token.type == LP:
             self.eat(LP)
             node = self.expr()
@@ -120,9 +151,9 @@ class Parser:
 
     def expr(self) -> AST:
         """
-            expr   : term ((PLUS | MINUS) term)*
+            expr   : term ((ADD | MIN) term)*
             term   : factor ((MUL | DIV) factor)*
-            factor : Num | LP expr RP
+            factor : (ADD | MIN) factor | Num | LP expr RP
         """
         node = self.term()
 
@@ -139,21 +170,6 @@ class Parser:
 
     def parse(self) -> AST:
         return self.expr()
-
-
-class BinOp(AST):
-    def __init__(self, left: AST, op: Token, right: AST):
-        assert left and right
-        self.left = left
-        self.op = op
-        self.right = right
-
-
-class Num(AST):
-    def __init__(self, token: Token):
-        assert token
-        self.token = token
-        self.value = token.value
 
 
 class NodeVisitor:
@@ -175,6 +191,13 @@ class NodeVisitor:
 class Interpreter(NodeVisitor):
     def visit_Num(self, node: Num):
         return node.value
+
+    def visit_Unary(self, node: Unary):
+        if node.op.type == MIN:
+            return -(self.visit(node.right))
+        if node.op.type == ADD:
+            return +(self.visit(node.right))
+        raise ValueError(node)
 
     def visit_BinOp(self, node: BinOp):
         if node.op.type == ADD:
@@ -210,10 +233,10 @@ class LISPInterpreter(NodeVisitor):
 
 
 if __name__ == "__main__":
-    test_input = "7 + (3 * 9) * 9"
+    test_input = "7 + (-3 * -9) * ---9"
 
     lexer = Lexer(test_input)
     parser = Parser(lexer)
-    interpreter = LISPInterpreter(parser)
+    interpreter = Interpreter(parser)
 
     print(interpreter.interpret())
