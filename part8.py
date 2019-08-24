@@ -1,4 +1,3 @@
-import sys
 from typing import Union
 
 INT, MUL, DIV, ADD, MIN, EOF, LP, RP = (
@@ -14,8 +13,8 @@ INT, MUL, DIV, ADD, MIN, EOF, LP, RP = (
 
 
 class Token:
-    def __init__(self, type: str, value: Union[str, int]):
-        self.type = type
+    def __init__(self, token_type: str, value: Union[str, int]):
+        self.type = token_type
         self.value = value
 
     def __str__(self):
@@ -110,8 +109,8 @@ class Parser:
         self.lexer = lexer
         self.token = lexer.get_next_token()
 
-    def eat(self, type: str):
-        assert self.token.type == type
+    def eat(self, token_type: str):
+        assert self.token.type == token_type
         self.token = self.lexer.get_next_token()
 
     def factor(self) -> AST:
